@@ -92,7 +92,8 @@ WiFiServer MBServer(MB_PORT);
 #endif
 
 // Instantiate ModbusMaster object as set GPIO to RS485_ENABLE_PIN half duplex adaptor.
-ModBusMasterMax485 node(RS485_ENABLE_PIN);
+//ModBusMasterMax485 node(RS485_ENABLE_PIN);
+ModBusMasterMax485 node;
 
 byte ByteArray[260];
 bool ledPinStatus = LOW;
@@ -212,7 +213,8 @@ void loop()
 
       case MB_FC_READ_COILS:  // 01 Read Coils
         {
-          ByteDataLength = WordDataLength * 2;
+          ByteDataLength = WordDataLength/8;
+          if(WordDataLength % 8)ByteDataLength++;
           ByteArray[5] = ByteDataLength + 3; //Number of bytes after this one.
           ByteArray[8] = ByteDataLength;     //Number of bytes after this one (or number of bytes of data).
 
@@ -220,11 +222,11 @@ void loop()
 
           int result = node.readCoils(Start, WordDataLength);
 
-          for (int i = 0; i < WordDataLength; i++)
+          for (int i = 0; i <= ByteDataLength/2; i++)
           {
             if (result == 0) {
-              ByteArray[ 9 + i * 2] = highByte(node.getResponseBuffer(i));
-              ByteArray[10 + i * 2] =  lowByte(node.getResponseBuffer(i));
+              ByteArray[ 10 + i*2 ] = highByte(node.getResponseBuffer(i));
+              ByteArray[9 + i*2 ] =  lowByte(node.getResponseBuffer(i));
             }
           }
 
@@ -238,7 +240,8 @@ void loop()
 
       case MB_FC_READ_DISCRETE_INPUT:  // 02 Read Discrete Input
         {
-          ByteDataLength = WordDataLength * 2;
+          ByteDataLength = WordDataLength/8;
+          if(WordDataLength % 8)ByteDataLength++;
           ByteArray[5] = ByteDataLength + 3; //Number of bytes after this one.
           ByteArray[8] = ByteDataLength;     //Number of bytes after this one (or number of bytes of data).
 
@@ -246,11 +249,11 @@ void loop()
 
           int result = node.readDiscreteInputs(Start, WordDataLength);
 
-          for (int i = 0; i < WordDataLength; i++)
+          for (int i = 0; i <= ByteDataLength/2; i++)
           {
             if (result == 0) {
-              ByteArray[ 9 + i * 2] = highByte(node.getResponseBuffer(i));
-              ByteArray[10 + i * 2] =  lowByte(node.getResponseBuffer(i));
+              ByteArray[ 10 + i * 2] = highByte(node.getResponseBuffer(i));
+              ByteArray[9 + i * 2] =  lowByte(node.getResponseBuffer(i));
             }
           }
 
@@ -314,7 +317,7 @@ void loop()
         {
           node.slaveID(UID);
 
-          int result =  node.writeSingleCoil(Start, ByteArray[MB_TCP_REGISTER_NUMBER + 1]);
+          int result =  node.writeSingleCoil(Start, ByteArray[MB_TCP_REGISTER_NUMBER]);
           ByteArray[5] = 6; //Number of bytes after this one.
           MessageLength = 12;
           client.write((const uint8_t *)ByteArray, MessageLength);
